@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  ubuntu:
+    build: 
+      context: .
+      dockerfile: ubuntu
+    container_name: ubuntu-container
+    networks:
+      - elk-network
+    volumes:
+      - logs:/var/log
+    restart: always
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    networks:
+      - elk-network
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: always
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.5.0
+    container_name: logstash
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    networks:
+      - elk-network
+    depends_on:
+      - elasticsearch
+      - ubuntu
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.5.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - elk-network
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    restart: always
+
+volumes:
+  elasticsearch_data:
+  logs:
+
+networks:
+  elk-network:
+    driver: bridge
